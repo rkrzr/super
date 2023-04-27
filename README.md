@@ -16,4 +16,7 @@ nix build
 cargo build [--release]
 cargo run [--release]
 cargo test [--release]
+
+# Run quietly with one argument supplied
+cargo run --quiet add
 ```
