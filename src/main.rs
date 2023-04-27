@@ -1,4 +1,5 @@
 use std::env;
+use std::process::Command;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,6 +21,17 @@ fn main() {
     }
 }
 
+/// Add a new repo to the super repo
+///
+/// This will add the repo as a submodule and will also initialize it
 fn command_add(repo_path: &String) {
-    println!("Super add! (to be implemented) {}", repo_path)
+    println!("Super add! (to be implemented) {}", repo_path);
+
+    // Run a git subprocess
+    let output = Command::new("git")
+        .arg("status")
+        .output()
+        .expect("failed to execute process");
+
+    println!("{}", String::from_utf8_lossy(&output.stdout));
 }
