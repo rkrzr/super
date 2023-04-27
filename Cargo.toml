@@ -1,13 +1,15 @@
 [package]
-authors = ["Robert Kreuzer <robert.kreuzer@gmail.com>"]
-edition = "2021"
 # If you change the name here, you must also do it in flake.nix (and run `cargo generate-lockfile` afterwards)
 name = "super"
 version = "0.0.1"
+authors = ["Robert Kreuzer <robert.kreuzer@gmail.com>"]
+edition = "2021"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# 3.2.24 is the newest version that still works with Rust 1.6.0
 clap = "3.2.24"
 
 [package.metadata.nix]
