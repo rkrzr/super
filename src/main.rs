@@ -17,6 +17,7 @@ super pull - Update all repos in the super repo.
 
 use std::env;
 use std::process::Command;
+use std::process::Output;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -45,7 +46,7 @@ fn main() {
                 command_pull()
             }
         } else {
-            println!("We only support the 'super add' command right now.")
+            println!("We only support the 'super add' command right now.");
         }
     }
 }
@@ -102,6 +103,8 @@ fn command_pull() {
         .arg("update")
         .arg("--init")
         .arg("--recursive")
+        // Updates are printed to stderr by git
+        .arg("--progress")
         .arg("--jobs")
         .arg("4")
         .output()
@@ -112,6 +115,27 @@ fn command_pull() {
     } else {
         print!(
             "Failed to update the repos. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+/// Fetch the branch that is specified in .gitmodules.
+/// If no branch is specified we fetch all of them.
+fn git_fetch(branch: &String) {
+    let output: Output = Command::new("git")
+        .arg("fetch")
+        // TODO: Don't hard-code origin here, but discover it per repo
+        .arg("origin")
+        .arg(branch)
+        .output()
+        .expect("failed to execute process");
+
+    if output.status.success() {
+        println!("All repos were fetched successfully.");
+    } else {
+        print!(
+            "Failed to fetch the repos. Error: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
