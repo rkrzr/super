@@ -11,6 +11,8 @@ super init - Initialize a new super repo for the first time. This is just a conv
 
 super add - Add a new repo to the super repo. This is just a convenience wrapper
             around 'git submodule add'.
+
+super pull - Update all repos in the super repo.
 */
 
 use std::env;
@@ -36,6 +38,12 @@ fn main() {
             } else {
                 command_init()
             }
+        } else if args[1] == "pull" {
+            if args.len() != 2 {
+                println!("Usage: super pull")
+            } else {
+                command_pull()
+            }
         } else {
             println!("We only support the 'super add' command right now.")
         }
@@ -46,7 +54,6 @@ fn main() {
 ///
 /// You have to call this in the directory that you want to initialize
 fn command_init() {
-    // Run a git subprocess
     let output = Command::new("git")
         .arg("init")
         .output()
@@ -67,7 +74,6 @@ fn command_init() {
 ///
 /// This will add the repo as a submodule and will also initialize it
 fn command_add(repo_path: &String) {
-    // Run a git subprocess
     let output = Command::new("git")
         .arg("submodule")
         .arg("add")
@@ -82,6 +88,30 @@ fn command_add(repo_path: &String) {
     } else {
         print!(
             "Failed to add the submodule. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+/// Pull the latest code for all submodules in the super repo
+///
+/// This will add the repo as a submodule and will also initialize it
+fn command_pull() {
+    let output = Command::new("git")
+        .arg("submodule")
+        .arg("update")
+        .arg("--init")
+        .arg("--recursive")
+        .arg("--jobs")
+        .arg("4")
+        .output()
+        .expect("failed to execute process");
+
+    if output.status.success() {
+        println!("All repos were updated successfully.");
+    } else {
+        print!(
+            "Failed to update the repos. Error: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
