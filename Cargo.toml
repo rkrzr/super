@@ -11,6 +11,14 @@ edition = "2021"
 [dependencies]
 # 3.2.24 is the newest version that still works with Rust 1.6.0
 clap = "3.2.24"
+# We disable default-features here because they enable OpenSSL, which we don't need (and don't want
+# to compile)
+git2 = { version = "0.17.1", features = [
+    "zlib-ng-compat",
+], default-features = false }
+
+# git2 has openssl as a dependency
+# openssl = { version = "0.10", features = ["vendored"] }
 
 [package.metadata.nix]
 app = true

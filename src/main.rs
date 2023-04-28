@@ -15,6 +15,7 @@ super add - Add a new repo to the super repo. This is just a convenience wrapper
 super pull - Update all repos in the super repo.
 */
 
+use git2::Repository;
 use std::env;
 use std::process::Command;
 use std::process::Output;
@@ -47,6 +48,9 @@ fn main() {
             }
         } else {
             println!("We only support the 'super add' command right now.");
+
+            // TODO: Use this in command_pull
+            parse_gitmodules().expect("failed to parse .gitmodules");
         }
     }
 }
@@ -139,4 +143,21 @@ fn git_fetch(branch: &String) {
             String::from_utf8_lossy(&output.stderr)
         );
     }
+}
+
+fn parse_gitmodules() -> Result<(), git2::Error> {
+    let repo = Repository::open(".")?;
+
+    // Iterate over the submodules in the repository
+    for submodule in repo.submodules()? {
+        // Get the name and URL of the submodule
+        let name: &str = submodule.name().unwrap_or("");
+        let url: &str = submodule.url().unwrap_or("");
+        let path: std::borrow::Cow<str> = submodule.path().to_string_lossy();
+
+        println!("Submodule {} at {}:", name, path);
+        println!("  URL: {}", url);
+    }
+
+    Ok(())
 }
