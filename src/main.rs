@@ -6,6 +6,9 @@ It was created by Robert Kreuzer in 2023.
 
 # Usage
 
+super init - Initialize a new super repo for the first time. This is just a convenience wrapper
+             around 'git init'.
+
 super add - Add a new repo to the super repo. This is just a convenience wrapper
             around 'git submodule add'.
 */
@@ -27,9 +30,36 @@ fn main() {
                 let repo_path = &args[2];
                 command_add(repo_path)
             }
+        } else if args[1] == "init" {
+            if args.len() != 2 {
+                println!("Usage: super init")
+            } else {
+                command_init()
+            }
         } else {
             println!("We only support the 'super add' command right now.")
         }
+    }
+}
+
+/// Initialize the super repo for the first time
+///
+/// You have to call this in the directory that you want to initialize
+fn command_init() {
+    // Run a git subprocess
+    let output = Command::new("git")
+        .arg("init")
+        .output()
+        .expect("failed to execute process");
+
+    if output.status.success() {
+        println!("The super repo was initialized successfully.");
+        println!("You can now add your repos with 'super add <pathspec>")
+    } else {
+        print!(
+            "Failed to initialize the super repo. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 }
 
@@ -37,8 +67,6 @@ fn main() {
 ///
 /// This will add the repo as a submodule and will also initialize it
 fn command_add(repo_path: &String) {
-    // println!("Super add! (to be implemented) {}", repo_path);
-
     // Run a git subprocess
     let output = Command::new("git")
         .arg("submodule")
