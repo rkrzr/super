@@ -23,3 +23,9 @@ systems = [
     "x86_64-darwin",
     "x86_64-linux",
 ]
+
+[[bin]]
+name = "super"
+path = "src/main.rs"
+test = false
+bench = false

@@ -27,6 +27,9 @@ cargo test [--release]
 
 # Run quietly with one argument supplied
 cargo run --quiet add
+
+# Install to $HOME/.cargo/bin
+cargo install --path .
 ```
 
 ## git
