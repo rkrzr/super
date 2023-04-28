@@ -25,13 +25,24 @@ fn main() {
 ///
 /// This will add the repo as a submodule and will also initialize it
 fn command_add(repo_path: &String) {
-    println!("Super add! (to be implemented) {}", repo_path);
+    // println!("Super add! (to be implemented) {}", repo_path);
 
     // Run a git subprocess
     let output = Command::new("git")
-        .arg("status")
+        .arg("submodule")
+        .arg("add")
+        // TODO: We might want to pass along all optional arguments here
+        .arg(repo_path)
         .output()
         .expect("failed to execute process");
 
-    println!("{}", String::from_utf8_lossy(&output.stdout));
+    if output.status.success() {
+        println!("The submodule {} was added successfully.", repo_path);
+        println!("You probably will want to commit this (along with .gitmodules, if this is the first submodule.")
+    } else {
+        print!(
+            "Failed to add the submodule. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
