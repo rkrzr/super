@@ -1,3 +1,15 @@
+/*
+This file contains the implementation of "super", a tool to manage all of your
+git repos in one super repo.
+
+It was created by Robert Kreuzer in 2023.
+
+# Usage
+
+super add - Add a new repo to the super repo. This is just a convenience wrapper
+            around 'git submodule add'.
+*/
+
 use std::env;
 use std::process::Command;
 
