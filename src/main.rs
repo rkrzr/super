@@ -44,13 +44,13 @@ fn main() {
             if args.len() != 2 {
                 println!("Usage: super pull")
             } else {
-                command_pull()
+                match command_pull() {
+                    Ok(_) => (),
+                    Err(error) => println!("Error pulling your repos: {:?}", error),
+                }
             }
         } else {
             println!("We only support the 'super add' command right now.");
-
-            // TODO: Use this in command_pull
-            parse_gitmodules().expect("failed to parse .gitmodules");
         }
     }
 }
@@ -99,65 +99,44 @@ fn command_add(repo_path: &String) {
 }
 
 /// Pull the latest code for all submodules in the super repo
-///
-/// This will add the repo as a submodule and will also initialize it
-fn command_pull() {
-    let output = Command::new("git")
-        .arg("submodule")
-        .arg("update")
-        .arg("--init")
-        .arg("--recursive")
-        // Updates are printed to stderr by git
-        .arg("--progress")
-        .arg("--jobs")
-        .arg("4")
-        .output()
-        .expect("failed to execute process");
+fn command_pull() -> Result<(), git2::Error> {
+    let repo: Repository = Repository::open(".")?;
 
-    if output.status.success() {
-        println!("All repos were updated successfully.");
-    } else {
-        print!(
-            "Failed to update the repos. Error: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+    for submodule in repo.submodules()? {
+        let name: &str = submodule.name().unwrap_or("");
+        // Fetch the branch specified in .gitmodules
+        let branch = submodule.branch();
+
+        if let Some(branch) = branch {
+            git_fetch(name, branch);
+        } else {
+            println!(
+                "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
+                submodule.name()
+            );
+            git_fetch(name, "master")
+        }
     }
+
+    Ok(())
 }
 
 /// Fetch the branch that is specified in .gitmodules.
-/// If no branch is specified we fetch all of them.
-fn git_fetch(branch: &String) {
+fn git_fetch(repo: &str, branch: &str) {
     let output: Output = Command::new("git")
         .arg("fetch")
-        // TODO: Don't hard-code origin here, but discover it per repo
-        .arg("origin")
+        // Note: We don't specify the remote here. Git, by default, will use the
+        // origin remote, unless there's an upstream branch configured for the current
+        // branch
+        .arg(repo)
         .arg(branch)
         .output()
         .expect("failed to execute process");
 
-    if output.status.success() {
-        println!("All repos were fetched successfully.");
-    } else {
+    if !output.status.success() {
         print!(
             "Failed to fetch the repos. Error: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
-}
-
-fn parse_gitmodules() -> Result<(), git2::Error> {
-    let repo = Repository::open(".")?;
-
-    // Iterate over the submodules in the repository
-    for submodule in repo.submodules()? {
-        // Get the name and URL of the submodule
-        let name: &str = submodule.name().unwrap_or("");
-        let url: &str = submodule.url().unwrap_or("");
-        let path: std::borrow::Cow<str> = submodule.path().to_string_lossy();
-
-        println!("Submodule {} at {}:", name, path);
-        println!("  URL: {}", url);
-    }
-
-    Ok(())
 }
