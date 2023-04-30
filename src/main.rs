@@ -17,6 +17,7 @@ super pull - Update all repos in the super repo.
 
 use git2::Repository;
 use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 
@@ -101,24 +102,27 @@ fn command_add(repo_path: &String) {
 /// Pull the latest code for all submodules in the super repo
 fn command_pull() -> Result<(), git2::Error> {
     let repo: Repository = Repository::open(".")?;
+    let current_dir: std::path::PathBuf =
+        env::current_dir().expect("Failed to get current directory");
 
     for submodule in repo.submodules()? {
         let name: &str = submodule.name().unwrap_or("");
         // Fetch the branch specified in .gitmodules
         let branch = submodule.branch();
+        let repo_dir = current_dir.join(name);
 
         if let Some(branch) = branch {
-            git_fetch(name, branch);
+            git_fetch(&repo_dir, branch);
         } else {
             println!(
                 "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
                 submodule.name()
             );
             // TODO: Print output for each repo here
-            git_fetch(name, "master");
+            git_fetch(&repo_dir, "master");
 
             // Fast-forward the branch to the latest commit
-            forward_branch(name, "master")
+            forward_branch(&repo_dir, "master")
         }
     }
 
@@ -126,14 +130,15 @@ fn command_pull() -> Result<(), git2::Error> {
 }
 
 /// Fetch the branch that is specified in .gitmodules.
-fn git_fetch(repo: &str, branch: &str) {
+fn git_fetch(repo_dir: &PathBuf, branch: &str) {
     let output: Output = Command::new("git")
         .arg("fetch")
-        // Note: We don't specify the remote here. Git, by default, will use the
+        // TODO: Don't specify the remote here? Git, by default, will use the
         // origin remote, unless there's an upstream branch configured for the current
         // branch
-        .arg(repo)
+        .arg("origin")
         .arg(branch)
+        .current_dir(repo_dir)
         .output()
         .expect("failed to execute process");
 
@@ -146,11 +151,7 @@ fn git_fetch(repo: &str, branch: &str) {
 }
 
 /// Fast-forward the given branch, in the given repo.
-fn forward_branch(repo: &str, branch: &str) {
-    let current_dir: std::path::PathBuf =
-        env::current_dir().expect("Failed to get current directory");
-    let repo_dir = current_dir.join(repo);
-
+fn forward_branch(repo_dir: &PathBuf, branch: &str) {
     let output: Output = Command::new("git")
         .arg("merge")
         .arg("--ff-only")
