@@ -114,7 +114,11 @@ fn command_pull() -> Result<(), git2::Error> {
                 "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
                 submodule.name()
             );
-            git_fetch(name, "master")
+            // TODO: Print output for each repo here
+            git_fetch(name, "master");
+
+            // Fast-forward the branch to the latest commit
+            forward_branch(name, "master")
         }
     }
 
@@ -135,7 +139,31 @@ fn git_fetch(repo: &str, branch: &str) {
 
     if !output.status.success() {
         print!(
-            "Failed to fetch the repos. Error: {}",
+            "Failed to fetch the repo. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+/// Fast-forward the given branch, in the given repo.
+fn forward_branch(repo: &str, branch: &str) {
+    let current_dir: std::path::PathBuf =
+        env::current_dir().expect("Failed to get current directory");
+    let repo_dir = current_dir.join(repo);
+
+    let output: Output = Command::new("git")
+        .arg("merge")
+        .arg("--ff-only")
+        // TODO: Don't hardcode the remote here
+        .arg("origin")
+        .arg(branch)
+        .current_dir(repo_dir)
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to fast-forward the repo. Error: {}",
             String::from_utf8_lossy(&output.stderr)
         );
     }
