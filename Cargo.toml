@@ -34,6 +34,6 @@ systems = [
 
 [[bin]]
 name = "super"
-path = "src/main.rs"
+path = "src/super.rs"
 test = false
 bench = false
