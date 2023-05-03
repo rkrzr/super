@@ -169,3 +169,29 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
         );
     }
 }
+
+/// Return the commit hash that HEAD points to.
+fn get_head_sha(repo_dir: &PathBuf) -> String {
+    return resolve_ref(repo_dir, "HEAD".to_string());
+}
+
+/// Return the hash of the commit (or tag) that the ref points to.
+fn resolve_ref(repo_dir: &PathBuf, committish: String) -> String {
+    let output: Output = Command::new("git")
+        .arg("log")
+        .arg("-1")
+        .arg("--format=format:%H")
+        .arg(committish)
+        .current_dir(repo_dir)
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to resolve the given reference. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    return output.stdout.escape_ascii().to_string();
+}
