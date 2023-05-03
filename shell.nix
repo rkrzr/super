@@ -2,6 +2,7 @@
   pkgs.mkShell rec {
     buildInputs = with pkgs; [
       clang
+      cmake
       llvmPackages.bintools
       rustup
     ];
