@@ -114,15 +114,16 @@ fn command_pull() -> Result<(), git2::Error> {
         if let Some(branch) = branch {
             git_fetch(&repo_dir, branch);
         } else {
-            println!(
-                "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
-                submodule.name()
-            );
+            // println!(
+            //     "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
+            //     submodule.name()
+            // );
             // TODO: Print output for each repo here
             git_fetch(&repo_dir, "master");
 
             // Fast-forward the branch to the latest commit
-            forward_branch(&repo_dir, "master")
+            forward_branch(&repo_dir, "master");
+            print_status_line(name)
         }
     }
 
@@ -168,6 +169,14 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
             String::from_utf8_lossy(&output.stderr)
         );
     }
+}
+
+fn print_status_line(repo: &str) {
+    // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
+    println!(
+        "\x1b[38;5;198;1m{} \x1b[1;36m     updated \x1b[1;37m      (asdf) -> (asdf)\x1b[0m",
+        repo
+    )
 }
 
 /// Return the commit hash that HEAD points to.
