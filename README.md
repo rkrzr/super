@@ -18,6 +18,13 @@ nix build
 4. In this directory run `super init` to initialize it as a new git repo
 5. Add all of your git repos with `super add <pathspec>`
 
+## Development setup
+
+This repo makes use of Nix and direnv. Run `direnv allow` to get a shell that
+has the right Rust version (specified in `rust-toolchain`) on its PATH. All Rust
+dependencies are specified in `Cargo.toml`. All non-Rust dependencies are
+specified in `shell.nix` (e.g. `cmake` and `clang`).
+
 ## cargo
 
 ```bash
