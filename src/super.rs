@@ -122,8 +122,10 @@ fn command_pull() -> Result<(), git2::Error> {
             git_fetch(&repo_dir, "master");
 
             // Fast-forward the branch to the latest commit
+            let hash_before = get_head_sha(&repo_dir);
             forward_branch(&repo_dir, "master");
-            print_status_line(name)
+            let hash_after = get_head_sha(&repo_dir);
+            print_status_line(name, &hash_before, &hash_after)
         }
     }
 
@@ -171,11 +173,11 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
     }
 }
 
-fn print_status_line(repo: &str) {
+/// Print the status of the given repo
+fn print_status_line(repo: &str, hash_before: &String, hash_after: &String) {
     // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
     println!(
-        "\x1b[38;5;198;1m{} \x1b[1;36m     updated \x1b[1;37m      (asdf) -> (asdf)\x1b[0m",
-        repo
+        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     updated \x1b[1;37m      ({hash_before}) -> ({hash_after})\x1b[0m"
     )
 }
 
