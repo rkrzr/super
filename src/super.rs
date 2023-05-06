@@ -21,6 +21,29 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
 
+/// The status of the pull operation
+enum PullStatus {
+    Unchanged,
+    Updated,
+    UpToDate,
+}
+
+impl PullStatus {
+    fn to_str(&self) -> &str {
+        match *self {
+            PullStatus::Unchanged => "unchanged",
+            PullStatus::Updated => "updated",
+            PullStatus::UpToDate => "up to date",
+        }
+    }
+}
+
+impl std::fmt::Display for PullStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_str())
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -125,7 +148,13 @@ fn command_pull() -> Result<(), git2::Error> {
             let hash_before = get_head_sha(&repo_dir);
             forward_branch(&repo_dir, "master");
             let hash_after = get_head_sha(&repo_dir);
-            print_status_line(name, &hash_before, &hash_after)
+
+            let status: PullStatus = if hash_before == hash_after {
+                PullStatus::UpToDate
+            } else {
+                PullStatus::Updated
+            };
+            print_status_line(name, &status, &hash_before, &hash_after)
         }
     }
 
@@ -174,14 +203,13 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
 }
 
 /// Print the status of the given repo
-fn print_status_line(repo: &str, hash_before: &String, hash_after: &String) {
+fn print_status_line(repo: &str, status: &PullStatus, hash_before: &String, hash_after: &String) {
     let short_hash_before = get_short_hash(hash_before);
     let short_hash_after = get_short_hash(hash_after);
 
-
     // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
     println!(
-        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     updated \x1b[1;37m      ({short_hash_before}) -> ({short_hash_after})\x1b[0m"
+        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     {status} \x1b[1;37m      ({short_hash_before}) -> ({short_hash_after})\x1b[0m"
     )
 }
 
@@ -229,5 +257,5 @@ fn get_short_hash(committish: &String) -> String {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    return stdout.trim().to_string()
+    return stdout.trim().to_string();
 }
