@@ -134,28 +134,25 @@ fn command_pull() -> Result<(), git2::Error> {
         let branch = submodule.branch();
         let repo_dir = current_dir.join(name);
 
-        if let Some(branch) = branch {
-            git_fetch(&repo_dir, branch);
+        let branch = if let Some(branch) = branch {
+            branch
         } else {
-            // println!(
-            //     "The {:?} repo has no branch specified in .gitmodules. Defaulting to 'master'.",
-            //     submodule.name()
-            // );
-            // TODO: Print output for each repo here
-            git_fetch(&repo_dir, "master");
+            // We default to "master" if there is no branch specified in .gitmodules
+            "master"
+        };
 
-            // Fast-forward the branch to the latest commit
-            let hash_before = get_head_sha(&repo_dir);
-            forward_branch(&repo_dir, "master");
-            let hash_after = get_head_sha(&repo_dir);
+        // Fast-forward the branch to the latest commit
+        let hash_before = get_head_sha(&repo_dir);
+        git_fetch(&repo_dir, branch);
+        forward_branch(&repo_dir, branch);
+        let hash_after = get_head_sha(&repo_dir);
 
-            let status: PullStatus = if hash_before == hash_after {
-                PullStatus::UpToDate
-            } else {
-                PullStatus::Updated
-            };
-            print_status_line(name, &status, &hash_before, &hash_after)
-        }
+        let status: PullStatus = if hash_before == hash_after {
+            PullStatus::UpToDate
+        } else {
+            PullStatus::Updated
+        };
+        print_status_line(name, branch, &status, &hash_before, &hash_after)
     }
 
     Ok(())
@@ -203,13 +200,19 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
 }
 
 /// Print the status of the given repo
-fn print_status_line(repo: &str, status: &PullStatus, hash_before: &String, hash_after: &String) {
+fn print_status_line(
+    repo: &str,
+    branch: &str,
+    status: &PullStatus,
+    hash_before: &String,
+    hash_after: &String,
+) {
     let short_hash_before = get_short_hash(hash_before);
     let short_hash_after = get_short_hash(hash_after);
 
     // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
     println!(
-        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     {status} \x1b[1;37m      ({short_hash_before}) -> ({short_hash_after})\x1b[0m"
+        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     {status} \x1b[1;37m      {branch}({short_hash_before}) -> {branch}({short_hash_after})\x1b[0m"
     )
 }
 
