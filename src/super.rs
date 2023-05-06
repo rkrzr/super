@@ -175,9 +175,13 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
 
 /// Print the status of the given repo
 fn print_status_line(repo: &str, hash_before: &String, hash_after: &String) {
+    let short_hash_before = get_short_hash(hash_before);
+    let short_hash_after = get_short_hash(hash_after);
+
+
     // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
     println!(
-        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     updated \x1b[1;37m      ({hash_before}) -> ({hash_after})\x1b[0m"
+        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     updated \x1b[1;37m      ({short_hash_before}) -> ({short_hash_after})\x1b[0m"
     )
 }
 
@@ -205,4 +209,25 @@ fn resolve_ref(repo_dir: &PathBuf, committish: String) -> String {
     }
 
     return output.stdout.escape_ascii().to_string();
+}
+
+/// Return a 7 character long hash for a given commit.
+fn get_short_hash(committish: &String) -> String {
+    let output: Output = Command::new("git")
+        .arg("rev-parse")
+        .arg("--short")
+        .arg(committish)
+        // .current_dir(repo_dir)
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to get a short hash for the given commit. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    return stdout.trim().to_string()
 }
