@@ -16,10 +16,12 @@ super pull - Update all repos in the super repo.
 */
 
 use git2::Repository;
+use git2::Submodule;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
+use std::thread;
 
 /// The status of the pull operation
 enum PullStatus {
@@ -122,40 +124,87 @@ fn command_add(repo_path: &String) {
     }
 }
 
+fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2::Error> {
+    let mut threads = vec![];
+    for submodule in repo.submodules()? {
+        let name = submodule.name().unwrap_or("").to_string();
+        let repo_dir = current_dir.join(name.clone());
+        let branch = submodule.branch().unwrap_or("master").to_string();
+
+        let handle = thread::spawn(move || {
+            pull_single_repo(&repo_dir, &name, &branch);
+        });
+        threads.push(handle);
+
+        // Wait for the thread to finish
+    }
+    for handle in threads {
+        handle.join().unwrap();
+    }
+
+    println!("All threads finished!");
+    Ok(())
+}
+
+fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
+    // let branch = if let Some(branch) = branch {
+    //     branch
+    // } else {
+    //     // We default to "master" if there is no branch specified in .gitmodules
+    //     "master"
+    // };
+
+    // Fast-forward the branch to the latest commit
+    let hash_before = get_head_sha(&repo_dir);
+    git_fetch(&repo_dir, branch);
+    forward_branch(&repo_dir, branch);
+    let hash_after = get_head_sha(&repo_dir);
+
+    let status: PullStatus = if hash_before == hash_after {
+        PullStatus::UpToDate
+    } else {
+        PullStatus::Updated
+    };
+    print_status_line(name, branch, &status, &hash_before, &hash_after)
+}
+
 /// Pull the latest code for all submodules in the super repo
 fn command_pull() -> Result<(), git2::Error> {
     let repo: Repository = Repository::open(".")?;
     let current_dir: std::path::PathBuf =
         env::current_dir().expect("Failed to get current directory");
 
-    for submodule in repo.submodules()? {
-        let name: &str = submodule.name().unwrap_or("");
-        // Fetch the branch specified in .gitmodules
-        let branch = submodule.branch();
-        let repo_dir = current_dir.join(name);
+    pull_in_parallel(&current_dir, &repo)
 
-        let branch = if let Some(branch) = branch {
-            branch
-        } else {
-            // We default to "master" if there is no branch specified in .gitmodules
-            "master"
-        };
+    // for submodule in repo.submodules()? {
+    //     let name: &str = submodule.name().unwrap_or("");
+    //     let repo_dir = current_dir.join(name);
+    //     let branch = submodule.branch().unwrap_or("master");
+    //     // Fetch the branch specified in .gitmodules
+    //     pull_single_repo(&repo_dir, name, branch);
 
-        // Fast-forward the branch to the latest commit
-        let hash_before = get_head_sha(&repo_dir);
-        git_fetch(&repo_dir, branch);
-        forward_branch(&repo_dir, branch);
-        let hash_after = get_head_sha(&repo_dir);
+    //     // let branch = if let Some(branch) = branch {
+    //     //     branch
+    //     // } else {
+    //     //     // We default to "master" if there is no branch specified in .gitmodules
+    //     //     "master"
+    //     // };
 
-        let status: PullStatus = if hash_before == hash_after {
-            PullStatus::UpToDate
-        } else {
-            PullStatus::Updated
-        };
-        print_status_line(name, branch, &status, &hash_before, &hash_after)
-    }
+    //     // // Fast-forward the branch to the latest commit
+    //     // let hash_before = get_head_sha(&repo_dir);
+    //     // git_fetch(&repo_dir, branch);
+    //     // forward_branch(&repo_dir, branch);
+    //     // let hash_after = get_head_sha(&repo_dir);
 
-    Ok(())
+    //     // let status: PullStatus = if hash_before == hash_after {
+    //     //     PullStatus::UpToDate
+    //     // } else {
+    //     //     PullStatus::Updated
+    //     // };
+    //     // print_status_line(name, branch, &status, &hash_before, &hash_after)
+    // }
+
+    // Ok(())
 }
 
 /// Fetch the branch that is specified in .gitmodules.
