@@ -10,7 +10,7 @@ edition = "2021"
 
 [dependencies]
 # 3.2.24 is the newest version that still works with Rust 1.6.0
-clap = "3.2.24"
+clap = "4.2.7"
 # We disable default-features here because they enable OpenSSL, which we don't need (and don't want
 # to compile)
 git2 = { version = "0.17.1", features = [

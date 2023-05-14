@@ -22,6 +22,7 @@ use std::process::Command;
 use std::process::Output;
 use std::thread;
 
+
 /// The status of the pull operation
 enum PullStatus {
     Unchanged,
