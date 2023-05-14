@@ -16,7 +16,6 @@ super pull - Update all repos in the super repo.
 */
 
 use git2::Repository;
-use git2::Submodule;
 use std::env;
 use std::path::PathBuf;
 use std::process::Command;
@@ -147,13 +146,6 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
 }
 
 fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
-    // let branch = if let Some(branch) = branch {
-    //     branch
-    // } else {
-    //     // We default to "master" if there is no branch specified in .gitmodules
-    //     "master"
-    // };
-
     // Fast-forward the branch to the latest commit
     let hash_before = get_head_sha(&repo_dir);
     git_fetch(&repo_dir, branch);
@@ -175,36 +167,6 @@ fn command_pull() -> Result<(), git2::Error> {
         env::current_dir().expect("Failed to get current directory");
 
     pull_in_parallel(&current_dir, &repo)
-
-    // for submodule in repo.submodules()? {
-    //     let name: &str = submodule.name().unwrap_or("");
-    //     let repo_dir = current_dir.join(name);
-    //     let branch = submodule.branch().unwrap_or("master");
-    //     // Fetch the branch specified in .gitmodules
-    //     pull_single_repo(&repo_dir, name, branch);
-
-    //     // let branch = if let Some(branch) = branch {
-    //     //     branch
-    //     // } else {
-    //     //     // We default to "master" if there is no branch specified in .gitmodules
-    //     //     "master"
-    //     // };
-
-    //     // // Fast-forward the branch to the latest commit
-    //     // let hash_before = get_head_sha(&repo_dir);
-    //     // git_fetch(&repo_dir, branch);
-    //     // forward_branch(&repo_dir, branch);
-    //     // let hash_after = get_head_sha(&repo_dir);
-
-    //     // let status: PullStatus = if hash_before == hash_after {
-    //     //     PullStatus::UpToDate
-    //     // } else {
-    //     //     PullStatus::Updated
-    //     // };
-    //     // print_status_line(name, branch, &status, &hash_before, &hash_after)
-    // }
-
-    // Ok(())
 }
 
 /// Fetch the branch that is specified in .gitmodules.
