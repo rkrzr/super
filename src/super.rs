@@ -13,6 +13,8 @@ super add - Add a new repo to the super repo. This is just a convenience wrapper
             around 'git submodule add'.
 
 super pull - Update all repos in the super repo.
+
+super foreach <command> - [TODO] Run a regular shell command for each repo in parallel
 */
 
 use git2::Repository;
