@@ -24,7 +24,6 @@ use std::process::Command;
 use std::process::Output;
 use std::thread;
 
-
 /// The status of the pull operation
 enum PullStatus {
     Unchanged,
@@ -131,6 +130,9 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
     for submodule in repo.submodules()? {
         let name = submodule.name().unwrap_or("").to_string();
         let repo_dir = current_dir.join(name.clone());
+
+        // submodules can specify a default branch in .gitmodules. We pull that branch by
+        // default, and otherwise we pull "master"
         let branch = submodule.branch().unwrap_or("master").to_string();
 
         let handle = thread::spawn(move || {
@@ -144,14 +146,26 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
         handle.join().unwrap();
     }
 
-    println!("All threads finished!");
     Ok(())
 }
 
+// Fetch the latest commits for the given branch, and do a fast-forward merge
+// if, and only if, the repo is on the given branch and has no uncommitted changes.
 fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
-    // Fast-forward the branch to the latest commit
     let hash_before = get_head_sha(&repo_dir);
+    // Fetch the latest commits
     git_fetch(&repo_dir, branch);
+
+    // Get the currently checked out branch
+    let branch_name = get_current_branch(&repo_dir);
+
+    if branch_name != branch {
+        // println!("Current branch: {}", branch_name);
+        // println!("The repo {} is not on branch {}. Skipping.", name, branch);
+        print_status_line(name, &PullStatus::Unchanged, "not on tracked branch");
+        return;
+    }
+
     forward_branch(&repo_dir, branch);
     let hash_after = get_head_sha(&repo_dir);
 
@@ -160,7 +174,30 @@ fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
     } else {
         PullStatus::Updated
     };
-    print_status_line(name, branch, &status, &hash_before, &hash_after)
+    let short_hash_before = get_short_hash(&hash_before);
+    let short_hash_after = get_short_hash(&hash_after);
+    let remark = format!("{branch}({short_hash_before}) -> {branch}({short_hash_after})");
+    print_status_line(name, &status, &remark)
+}
+
+/// Get the current branch of the repo
+fn get_current_branch(repo_dir: &PathBuf) -> String {
+    let output: Output = Command::new("git")
+        .arg("branch")
+        .arg("--show-current")
+        .current_dir(repo_dir)
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to fetch the repo. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    let stdout = output.stdout.to_ascii_lowercase();
+    return String::from_utf8_lossy(&stdout).trim().to_string();
 }
 
 /// Pull the latest code for all submodules in the super repo
@@ -214,20 +251,13 @@ fn forward_branch(repo_dir: &PathBuf, branch: &str) {
 }
 
 /// Print the status of the given repo
-fn print_status_line(
-    repo: &str,
-    branch: &str,
-    status: &PullStatus,
-    hash_before: &String,
-    hash_after: &String,
-) {
-    let short_hash_before = get_short_hash(hash_before);
-    let short_hash_after = get_short_hash(hash_after);
+fn print_status_line(repo: &str, status: &PullStatus, remark: &str) {
+    // Note: We have to convert the pull status to a string first, because we want to align the string,
+    // and alignment is not implemented for the Debug trait.
+    let status_str = status.to_str();
 
     // neon pink (\x1b[38;5;198;1m), bright cyan(\x1b[1;36), white (\x1b[1;37m)
-    println!(
-        "\x1b[38;5;198;1m{repo:18} \x1b[1;36m     {status} \x1b[1;37m      {branch}({short_hash_before}) -> {branch}({short_hash_after})\x1b[0m"
-    )
+    println!("\x1b[38;5;198;1m{repo:16} \x1b[1;36m{status_str:10} \x1b[1;37m   {remark}\x1b[0m")
 }
 
 /// Return the commit hash that HEAD points to.
