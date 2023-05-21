@@ -5,7 +5,7 @@ in the same directory. The typical use case is that you have one *super repo*
 which contains a number of other git repos as submodules, listed in
 `.gitmodules`. It is written in Rust.
 
-You can then run `super pull` to pull all of the submodules in parallel. `super`
+You can run `super pull` to pull all of the submodules in parallel. `super`
 will only pull the branch that has been specified in `.gitmodules`, otherwise it
 will fall back to `master`. If a repo is on a different branch, or if it has
 uncommitted changes, then `super` will do nothing and skip the repo.
