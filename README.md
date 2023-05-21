@@ -12,7 +12,7 @@ uncommitted changes, then `super` will do nothing and skip the repo.
 
 `super pull` prints a nice summary of the changes for each repo:
 
-![terminal output of super pull](https://github.com/rkrzr/super/assets/82817/d75a810a-c03e-4c25-8b93-86678c2ab0e2)
+![terminal output of super pull](https://github.com/rkrzr/super/assets/82817/6a99b27a-a52a-4fb4-b7ef-1669c3dc544e)
 
 
 ## How to use `super` to organize your git repos
