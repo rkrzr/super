@@ -52,6 +52,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     // println!("{:?}", args);
+    // TODO: Print a better usage string
     if args.len() < 2 {
         println!("Usage: super <command>")
     } else {
@@ -75,6 +76,17 @@ fn main() {
                 match command_pull() {
                     Ok(_) => (),
                     Err(error) => println!("Error pulling your repos: {:?}", error),
+                }
+            }
+        } else if args[1] == "foreach" {
+            // Note: all arguments after "super foreach" are interpreted as the command to
+            // run in each submodule.
+            if args.len() < 3 {
+                println!("Usage: super foreach <command>")
+            } else {
+                match command_foreach(&args[2..]) {
+                    Ok(_) => (),
+                    Err(error) => println!("Error running command: {:?}", error),
                 }
             }
         } else {
@@ -126,6 +138,56 @@ fn command_add(repo_path: &String) {
     }
 }
 
+fn command_foreach(command: &[String]) -> Result<(), git2::Error> {
+    // TODO: Deduplicate the next two lines.
+    let repo: Repository = Repository::open(".")?;
+    let current_dir: std::path::PathBuf =
+        env::current_dir().expect("Failed to get current directory");
+
+    // Run the given command as a subprocess for each submodule
+    let mut threads = vec![];
+
+    for submodule in repo.submodules()? {
+        let name = submodule.name().unwrap_or("").to_string();
+        let repo_dir = current_dir.join(name.clone());
+
+        // TODO: Actually run the command here
+        let cmd: Vec<String> = command.to_vec();
+        let handle = thread::spawn(move || run_command(&repo_dir, cmd));
+        threads.push(handle);
+    }
+
+    // Wait for the thread to finish
+    for handle in threads {
+        handle.join().unwrap();
+    }
+
+    Ok(())
+}
+
+fn run_command(repo_path: &PathBuf, cmd: Vec<String>) -> () {
+    let mut command = Command::new(cmd[0].clone());
+
+    // Add all arguments to the command
+    if cmd.len() > 1 {
+        command.args(&cmd[1..]);
+    }
+
+    let output: Output = command
+        .current_dir(repo_path)
+        .output()
+        .expect("failed to execute process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to run the command in the submodule. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    } else {
+        println!("{}", String::from_utf8_lossy(&output.stdout));
+    }
+}
+
 fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2::Error> {
     let mut threads = vec![];
     for submodule in repo.submodules()? {
@@ -140,9 +202,9 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
             pull_single_repo(&repo_dir, &name, &branch);
         });
         threads.push(handle);
-
-        // Wait for the thread to finish
     }
+
+    // Wait for the thread to finish
     for handle in threads {
         handle.join().unwrap();
     }
