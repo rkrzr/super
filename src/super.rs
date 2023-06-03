@@ -25,6 +25,7 @@ use std::process::Output;
 use std::thread;
 
 /// The status of the pull operation
+#[derive(PartialEq)]
 enum PullStatus {
     Unchanged,
     Updated,
@@ -167,17 +168,21 @@ fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
     }
 
     forward_branch(&repo_dir, branch);
-    let hash_after = get_head_sha(&repo_dir);
 
-    let status: PullStatus = if hash_before == hash_after {
-        PullStatus::UpToDate
-    } else {
-        PullStatus::Updated
-    };
+    let hash_after = get_head_sha(&repo_dir);
     let short_hash_before = get_short_hash(&hash_before);
     let short_hash_after = get_short_hash(&hash_after);
-    let remark = format!("{branch}({short_hash_before}) -> {branch}({short_hash_after})");
-    print_status_line(name, &status, &remark)
+
+    if hash_before == hash_after {
+        let status = PullStatus::UpToDate;
+        let remark: String = format!("{branch}({short_hash_before})");
+        print_status_line(name, &status, &remark);
+    } else {
+        let status = PullStatus::Updated;
+        let remark: String =
+            format!("{branch}({short_hash_before}) -> {branch}({short_hash_after})");
+        print_status_line(name, &status, &remark);
+    };
 }
 
 /// Get the current branch of the repo
