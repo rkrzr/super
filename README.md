@@ -48,3 +48,10 @@ cargo run --quiet add
 # Install to $HOME/.cargo/bin
 cargo install --path .
 ```
+
+### Updating dependencies
+
+Run `cargo update` to update all dependencies tracked in `Cargo.lock` to the
+newest version. Then commit and push the changes.
+
+The Rust version is pinned in `rust-toolchain`.
