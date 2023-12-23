@@ -1,21 +1,36 @@
-/*
-This file contains the implementation of "super", a tool to manage all of your
-git repos in one super repo.
+const DOCUMENTATION: &str = "NAME
+        super - manage all of your git repos in one super repository
 
-It was created by Robert Kreuzer in 2023.
-
-# Usage
-
-super init - Initialize a new super repo for the first time. This is just a convenience wrapper
+SYNOPSIS
+        super init - Initialize a new super repo for the first time. This is just a convenience wrapper
              around 'git init'.
 
-super add - Add a new repo to the super repo. This is just a convenience wrapper
+        super add - Add a new repo to the super repo. This is just a convenience wrapper
             around 'git submodule add'.
 
-super pull - Update all repos in the super repo.
+        super pull - Update all repos in the super repo.
 
-super foreach <command> - [TODO] Run a regular shell command for each repo in parallel
-*/
+        super foreach <command> - [TODO] Run a regular shell command for each repo in parallel
+
+DESCRIPTION
+        Super is a tool that enables you to manage all of your git repos in one centralized repository.
+        It is based on the idea of a super repository, which is a collection of git repos that can be
+        managed together. Typically, the repos belong together somehow, but this is not a hard requirement.
+
+        Super makes use of git submodules. It discovers all submodules in .gitmodules and pulls in their
+        latest code when running \"super pull\". Super is thus a wrapper around existing git functionality
+        with the goal to make using submodules more convenient by adding an intuitive CLI and a colorful
+        terminal UI.
+
+AUTHOR
+        Written by Robert Kreuzer.
+
+REPORTING BUGS
+        https://github.com/rkrzr/super/issues
+
+COPYRIGHT
+        Copyright © 2023 Robert Kreuzer.  License BSD-3-Clause: The 3-Clause BSD License <https://opensource.org/license/bsd-3-clause/>.
+        This is free software: you are free to change and redistribute it.  There is NO WARRANTY, to the extent permitted by law.";
 
 use git2::Repository;
 use std::env;
@@ -51,10 +66,9 @@ impl std::fmt::Display for PullStatus {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    // println!("{:?}", args);
-    // TODO: Print a better usage string
     if args.len() < 2 {
-        println!("Usage: super <command>")
+        // Print the docs with usage instructions
+        println!("{}", DOCUMENTATION)
     } else {
         if args[1] == "add" {
             if args.len() != 3 {
