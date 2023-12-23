@@ -138,6 +138,7 @@ fn command_add(repo_path: &String) {
     }
 }
 
+// Run the given command for each submodule in parallel
 fn command_foreach(command: &[String]) -> Result<(), git2::Error> {
     // TODO: Deduplicate the next two lines.
     let repo: Repository = Repository::open(".")?;
@@ -151,13 +152,12 @@ fn command_foreach(command: &[String]) -> Result<(), git2::Error> {
         let name = submodule.name().unwrap_or("").to_string();
         let repo_dir = current_dir.join(name.clone());
 
-        // TODO: Actually run the command here
         let cmd: Vec<String> = command.to_vec();
         let handle = thread::spawn(move || run_command(&repo_dir, cmd));
         threads.push(handle);
     }
 
-    // Wait for the thread to finish
+    // Wait for all threads to finish
     for handle in threads {
         handle.join().unwrap();
     }
@@ -165,6 +165,8 @@ fn command_foreach(command: &[String]) -> Result<(), git2::Error> {
     Ok(())
 }
 
+// Run the given command as a subprocess (but not in a sub-shell).
+// The output of the command is printed to stdout.
 fn run_command(repo_path: &PathBuf, cmd: Vec<String>) -> () {
     let mut command = Command::new(cmd[0].clone());
 
@@ -188,6 +190,7 @@ fn run_command(repo_path: &PathBuf, cmd: Vec<String>) -> () {
     }
 }
 
+// Pull all submodules in the given repo in parallel
 fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2::Error> {
     let mut threads = vec![];
     for submodule in repo.submodules()? {
@@ -204,7 +207,7 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
         threads.push(handle);
     }
 
-    // Wait for the thread to finish
+    // Wait for all threads to finish
     for handle in threads {
         handle.join().unwrap();
     }
