@@ -34,6 +34,7 @@ COPYRIGHT
 
 use git2::Repository;
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
@@ -65,6 +66,8 @@ impl std::fmt::Display for PullStatus {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    get_commands();
 
     if args.len() < 2 {
         // Print the docs with usage instructions
@@ -389,4 +392,40 @@ fn get_short_hash(committish: &String) -> String {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     return stdout.trim().to_string();
+}
+
+/// Get the user's custom commands from ~/.config/super/commands
+fn get_commands() -> Vec<String> {
+    if let Some(home_dir) = dirs::home_dir() {
+        let home_dir_str = home_dir.to_string_lossy();
+        println!("Home directory: {}", home_dir_str);
+
+        // Get all executable files
+        let directory_path: PathBuf = PathBuf::from(".config/super/commands");
+        let combined_path = home_dir.join(&directory_path);
+
+        // Collect all commands
+        let mut commands: Vec<String> = Vec::new();
+
+        if let Ok(entries) = fs::read_dir(combined_path) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    let file_name = entry.file_name();
+                    println!("File name: {}", file_name.to_string_lossy());
+
+                    // TODO: Only add *executable* files
+                    commands.push(file_name.to_string_lossy().to_string());
+                }
+            }
+            print!("Commands: {:?}", &commands);
+
+            return commands;
+        } else {
+            eprintln!("Error reading directory");
+            return Vec::new();
+        }
+    } else {
+        eprintln!("Unable to determine the home directory");
+        return Vec::new();
+    }
 }
