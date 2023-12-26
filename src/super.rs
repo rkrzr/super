@@ -35,6 +35,7 @@ COPYRIGHT
 use git2::Repository;
 use std::env;
 use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
 use std::process::Output;
@@ -397,9 +398,6 @@ fn get_short_hash(committish: &String) -> String {
 /// Get the user's custom commands from ~/.config/super/commands
 fn get_commands() -> Vec<String> {
     if let Some(home_dir) = dirs::home_dir() {
-        let home_dir_str = home_dir.to_string_lossy();
-        println!("Home directory: {}", home_dir_str);
-
         // Get all executable files
         let directory_path: PathBuf = PathBuf::from(".config/super/commands");
         let combined_path = home_dir.join(&directory_path);
@@ -407,22 +405,38 @@ fn get_commands() -> Vec<String> {
         // Collect all commands
         let mut commands: Vec<String> = Vec::new();
 
-        if let Ok(entries) = fs::read_dir(combined_path) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let file_name = entry.file_name();
-                    println!("File name: {}", file_name.to_string_lossy());
+        match fs::read_dir(&combined_path) {
+            Ok(entries) => {
+                for entry in entries {
+                    if let Ok(entry) = entry {
+                        let file_name = entry.file_name();
 
-                    // TODO: Only add *executable* files
-                    commands.push(file_name.to_string_lossy().to_string());
+                        if let Ok(metadata) = entry.metadata() {
+                            if metadata.is_dir() {
+                                println!("Skipping {:?} because it is a directory.", entry.path())
+                            } else {
+                                // We only want to add executable files to the list of commands
+                                if metadata.permissions().mode() & 0o111 != 0 {
+                                    commands.push(file_name.to_string_lossy().to_string());
+                                } else {
+                                    println!(
+                                        "Skipping {:?} because it is not executable.",
+                                        entry.path()
+                                    )
+                                }
+                            }
+                        } else {
+                            println!("Skipping {:?} because of invalid metadata.", entry.path())
+                        }
+                    }
                 }
-            }
-            print!("Commands: {:?}", &commands);
 
-            return commands;
-        } else {
-            eprintln!("Error reading directory");
-            return Vec::new();
+                return commands;
+            }
+            Err(error) => {
+                eprintln!("Error reading {:?}: {:?}", &combined_path, error);
+                return Vec::new();
+            }
         }
     } else {
         eprintln!("Unable to determine the home directory");
