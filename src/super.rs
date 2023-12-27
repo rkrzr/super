@@ -65,14 +65,14 @@ impl std::fmt::Display for PullStatus {
     }
 }
 
+// The main function. It parses CLI args and calls the right handler function.
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    get_commands();
-
     if args.len() < 2 {
         // Print the docs with usage instructions
-        println!("{}", DOCUMENTATION)
+        println!("{}", DOCUMENTATION);
+        println!("Git repos: {:?}", get_git_repos());
     } else {
         if args[1] == "add" {
             if args.len() != 3 {
@@ -100,7 +100,7 @@ fn main() {
             // Note: all arguments after "super foreach" are interpreted as the command to
             // run in each submodule.
             if args.len() < 3 {
-                println!("Usage: super foreach <command>")
+                println!("Usage: super foreach <command>");
             } else {
                 match command_foreach(&args[2..]) {
                     Ok(_) => (),
@@ -441,5 +441,35 @@ fn get_commands() -> Vec<String> {
     } else {
         eprintln!("Unable to determine the home directory");
         return Vec::new();
+    }
+}
+
+// This function discovers all git repos in the current directory
+// that super is invoked in.
+fn get_git_repos() -> Vec<String> {
+    // We use 'find' to discover all repos with a .git directory
+    let output: Output = Command::new("find")
+        .arg(".")
+        // Optimization: Limit search depth to 2 levels
+        .arg("-maxdepth")
+        .arg("2")
+        .arg("-name")
+        .arg(".git")
+        .output()
+        .expect("failed to execute the find process");
+
+    if !output.status.success() {
+        print!(
+            "Failed to discover all git repos. Error: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Vec::new();
+    } else {
+        let lines = String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .lines()
+            .map(|x| x.to_string())
+            .collect();
+        return lines;
     }
 }
