@@ -209,18 +209,49 @@ fn run_command(repo_path: &PathBuf, cmd: Vec<String>) -> () {
 }
 
 // Pull all submodules in the given repo in parallel
-fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2::Error> {
+fn pull_in_parallel(current_dir: &PathBuf) -> Result<(), git2::Error> {
     let mut threads = vec![];
-    for submodule in repo.submodules()? {
-        let name = submodule.name().unwrap_or("").to_string();
-        let repo_dir = current_dir.join(name.clone());
 
-        // submodules can specify a default branch in .gitmodules. We pull that branch by
-        // default, and otherwise we pull "master"
-        let branch = submodule.branch().unwrap_or("master").to_string();
+    // Vector of (repo_path, repo_name, branch) tuples
+    let mut repos: Vec<(PathBuf, String, String)> = vec![];
 
+    match Repository::open(".") {
+        // Case 1: The directory that 'super' was called in, is a git repo itself
+        Ok(repo) => {
+            match repo.submodules() {
+                Ok(submodules) => {
+                    for submodule in submodules {
+                        let name = submodule.name().unwrap_or("").to_string();
+                        let repo_dir = current_dir.join(name.clone());
+
+                        // submodules can specify a default branch in .gitmodules. We pull that branch by
+                        // default, and otherwise we pull "master"
+                        let branch = submodule.branch().unwrap_or("master").to_string();
+
+                        repos.push((repo_dir, name, branch))
+                    }
+                }
+                Err(error) => {
+                    println!("Failed to get submodules: {}", error)
+                }
+            }
+        }
+        // Case 2: The directory that 'super' was called in, is *not* a git repo itself
+        Err(_error) => {
+            for repo_name in get_git_repos() {
+                let repo_dir = current_dir.join(&repo_name);
+
+                // We want to pull the currently checked out branch
+                let branch = get_current_branch(&repo_dir);
+
+                repos.push((repo_dir, repo_name, branch))
+            }
+        }
+    }
+
+    for (repo_dir, repo_name, branch) in repos.into_iter() {
         let handle = thread::spawn(move || {
-            pull_single_repo(&repo_dir, &name, &branch);
+            pull_single_repo(&repo_dir, &repo_name, &branch);
         });
         threads.push(handle);
     }
@@ -236,25 +267,23 @@ fn pull_in_parallel(current_dir: &PathBuf, repo: &Repository) -> Result<(), git2
 // Fetch the latest commits for the given branch, and do a fast-forward merge
 // if, and only if, the repo is on the given branch and has no uncommitted changes.
 fn pull_single_repo(repo_dir: &PathBuf, name: &str, branch: &str) -> () {
-    let hash_before = get_head_sha(&repo_dir);
+    let hash_before = get_head_sha(repo_dir);
     // Fetch the latest commits
-    git_fetch(&repo_dir, branch);
+    git_fetch(repo_dir, branch);
 
     // Get the currently checked out branch
-    let branch_name = get_current_branch(&repo_dir);
+    let branch_name = get_current_branch(repo_dir);
 
     if branch_name != branch {
-        // println!("Current branch: {}", branch_name);
-        // println!("The repo {} is not on branch {}. Skipping.", name, branch);
         print_status_line(name, &PullStatus::Unchanged, "not on tracked branch");
         return;
     }
 
-    forward_branch(&repo_dir, branch);
+    forward_branch(repo_dir, branch);
 
-    let hash_after = get_head_sha(&repo_dir);
-    let short_hash_before = get_short_hash(&hash_before);
-    let short_hash_after = get_short_hash(&hash_after);
+    let hash_after = get_head_sha(repo_dir);
+    let short_hash_before = get_short_hash(repo_dir, &hash_before);
+    let short_hash_after = get_short_hash(repo_dir, &hash_after);
 
     if hash_before == hash_after {
         let status = PullStatus::UpToDate;
@@ -290,11 +319,10 @@ fn get_current_branch(repo_dir: &PathBuf) -> String {
 
 /// Pull the latest code for all submodules in the super repo
 fn command_pull() -> Result<(), git2::Error> {
-    let repo: Repository = Repository::open(".")?;
     let current_dir: std::path::PathBuf =
         env::current_dir().expect("Failed to get current directory");
 
-    pull_in_parallel(&current_dir, &repo)
+    pull_in_parallel(&current_dir)
 }
 
 /// Fetch the branch that is specified in .gitmodules.
@@ -375,12 +403,12 @@ fn resolve_ref(repo_dir: &PathBuf, committish: String) -> String {
 }
 
 /// Return a 7 character long hash for a given commit.
-fn get_short_hash(committish: &String) -> String {
+fn get_short_hash(repo_dir: &PathBuf, committish: &String) -> String {
     let output: Output = Command::new("git")
         .arg("rev-parse")
         .arg("--short")
         .arg(committish)
-        // .current_dir(repo_dir)
+        .current_dir(repo_dir)
         .output()
         .expect("failed to execute process");
 
@@ -468,7 +496,8 @@ fn get_git_repos() -> Vec<String> {
         let lines = String::from_utf8_lossy(&output.stdout)
             .trim()
             .lines()
-            .map(|x| x.to_string())
+            // Drop the "/.git" at the end of the path
+            .map(|x| x.to_string().replace("/.git", ""))
             .collect();
         return lines;
     }
